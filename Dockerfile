@@ -1,5 +1,5 @@
 FROM python:3.7
-RUN apt-get update && apt-get -y install cron vim python3-requests
+RUN apt-get update && apt-get -y install cron vim python3-requests python3-socks
 WORKDIR /app
 COPY crontab /etc/cron.d/crontab
 COPY main.py run.sh tokens.json /app/

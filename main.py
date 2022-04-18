@@ -3,7 +3,6 @@ import json
 import os
 from time import sleep
 
-
 URL = "https://api.divar.ir/v8/web-search/{SEARCH_CONDITIONS}".format(**os.environ)
 TOKENS = list()
 BOT_TOKEN = '{BOT_TOKEN}'.format(**os.environ)
@@ -11,16 +10,42 @@ BOT_CHATID = '{BOT_CHATID}'.format(**os.environ)
 
 
 def get_data():
-    response = requests.get(URL)
+    while True:
+        try:
+            response = requests.get(URL)
+            break
+        except:
+            print("Connection refused get data")
+            sleep(60)
+            continue
+    return response
+
+def get_token_data(token):
+    while True:
+        try:
+            response = requests.get("https://api.divar.ir/v5/posts/" + token)
+            break
+        except:
+            print("Connection refused token data")
+            sleep(60)
+            continue
     return response
 
 
 def parse_data(data):
     return json.loads(data.text)
 
-
 def get_houses_list(data):
     return data['web_widgets']['post_list']
+
+def get_houses_images(data):
+    return data['widgets']['images']
+
+def get_houses_data(data):
+    for item in data['widgets']['list_data']:
+        if item['title'] == 'مناسب برای':
+            return item['value']
+    return 'خانواده'
 
 
 def extract_each_house(house):
@@ -46,12 +71,10 @@ def send_telegram_message(house):
         'parse_mode': 'HTML',
         'text': text
     }
-    proxies = {'http': "socks5://127.0.0.1:3910"}
     while True:
         try:
             requests.post(url,
             data=body
-             ,proxies=proxies
             )
             break
         except requests.exceptions.ConnectionError:
@@ -79,14 +102,19 @@ if __name__ == "__main__":
     data = parse_data(data)
     data = get_houses_list(data)
 
-    for house in data[0:9]:
+    for house in data:
         house_data = extract_each_house(house)
         if house_data is None:
             continue
         if house_data['token'] in tokens:
             continue
-
-        tokens.append(house_data['token'])
-        send_telegram_message(house_data)
+        token_data = get_token_data(house_data['token'])
+        token_data = parse_data(token_data)
+        house_data_value = get_houses_data(token_data)
+        token_data = get_houses_images(token_data)
+        print(len(token_data) >= 9)
+        if(len(token_data) >= 9 and house_data_value == 'خانواده'):
+            tokens.append(house_data['token'])
+            send_telegram_message(house_data)
 
     save_tokns(tokens)
