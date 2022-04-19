@@ -7,7 +7,9 @@ URL = "https://api.divar.ir/v8/web-search/{SEARCH_CONDITIONS}".format(**os.envir
 TOKENS = list()
 BOT_TOKEN = '{BOT_TOKEN}'.format(**os.environ)
 BOT_CHATID = '{BOT_CHATID}'.format(**os.environ)
-
+ULTRAMSG_TOKEN = '{ULTRAMSG_TOKEN}'.format(**os.environ)
+ULTRAMSG_INSTANCE = '{ULTRAMSG_INSTANCE}'.format(**os.environ)
+ULTRAMSG_TO = json.loads('{ULTRAMSG_TO}'.format(**os.environ))
 
 def get_data():
     while True:
@@ -81,6 +83,22 @@ def send_telegram_message(house):
             print("Connection refused")
             sleep(60)
             continue
+    text = f"{house['title']}"+"\n"
+    text += f"{house['district']}"+"\n"
+    text += f"{house['description']}"+"\n\n"
+    text += f"https://divar.ir/v/a/{house['token']}"
+    url = "https://api.ultramsg.com/"+ULTRAMSG_INSTANCE+"/messages/chat"
+    for to in ULTRAMSG_TO:
+        payload = "token="+ULTRAMSG_TOKEN+"&to="+to+"&body="+text+"&priority=10&referenceId="
+        headers = {'content-type': 'application/x-www-form-urlencoded'}
+        while True:
+            try:
+                requests.request("POST", url, data=payload.encode('utf-8'), headers=headers)
+                break
+            except requests.exceptions.ConnectionError:
+                print("Connection refused")
+                sleep(60)
+                continue
 
 
 def load_tokens():
@@ -112,7 +130,7 @@ if __name__ == "__main__":
         token_data = parse_data(token_data)
         house_data_value = get_houses_data(token_data)
         token_data = get_houses_images(token_data)
-        print(len(token_data) >= 9)
+        print(len(token_data) >= 9 and house_data_value == 'خانواده')
         if(len(token_data) >= 9 and house_data_value == 'خانواده'):
             tokens.append(house_data['token'])
             send_telegram_message(house_data)
